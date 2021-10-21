@@ -13,8 +13,14 @@ export function ensureAuthenticated(
   const authToken = request.headers.authorization;
 
   if (!authToken) {
-    return response.status(401).json({ errorCode: "token.invalid" });
+    return response.status(401).json({
+      errorCode: "token.invalid",
+    });
   }
+
+  //Bearer 8934589345djisdjfk834u25ndsfksdkf
+  // [0] Bearer
+  // [1] 8934589345djisdjfk834u25ndsfksdkf
 
   const [, token] = authToken.split(" ");
 

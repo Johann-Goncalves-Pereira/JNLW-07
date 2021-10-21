@@ -1,32 +1,39 @@
-import { response } from "express";
 import axios from "axios";
+import prismaClient from "../prisma";
 import { sign } from "jsonwebtoken";
 
-import prismaClient from "../../prisma";
+/**
+ * Receber code(string)
+ * Recuperar o access_token no github
+ * Recuperar infos do user no github
+ * Verificar se o usuario existe no DB
+ * ---- SIM = Gera um token
+ * ---- NAO = Cria no DB, gera um token
+ * Retornar o token com as infos do user
+ */
 
 interface IAccessTokenResponse {
   access_token: string;
 }
 
 interface IUserResponse {
+  avatar_url: string;
+  login: string;
   id: number;
   name: string;
-  login: string;
-  avatar_url: string;
 }
 
 class AuthenticateUserService {
   async execute(code: string) {
     const url = "https://github.com/login/oauth/access_token";
 
-    const { data: AccessTokenResponse } =
+    const { data: accessTokenResponse } =
       await axios.post<IAccessTokenResponse>(url, null, {
         params: {
           client_id: process.env.GITHUB_CLIENT_ID,
           client_secret: process.env.GITHUB_CLIENT_SECRET,
           code,
         },
-
         headers: {
           Accept: "application/json",
         },
@@ -36,12 +43,12 @@ class AuthenticateUserService {
       "https://api.github.com/user",
       {
         headers: {
-          authorization: `Bearer ${AccessTokenResponse.access_token}`,
+          authorization: `Bearer ${accessTokenResponse.access_token}`,
         },
       }
     );
 
-    const { id, login, name, avatar_url } = response.data;
+    const { login, id, avatar_url, name } = response.data;
 
     let user = await prismaClient.user.findFirst({
       where: {
@@ -63,14 +70,12 @@ class AuthenticateUserService {
     const token = sign(
       {
         user: {
-          id: user.id,
           name: user.name,
-          avatar_url: user.avatar_url,
+          avatar_ur: user.avatar_url,
+          id: user.id,
         },
       },
-
       process.env.JWT_SECRET,
-
       {
         subject: user.id,
         expiresIn: "1d",
